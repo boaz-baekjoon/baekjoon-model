@@ -1,5 +1,11 @@
 ## Model Server
 
+### 🖥️ Opening a server
+```
+cd baekjoon-model
+uvicorn server:app --host "your.ip.address.4" --reload
+```
+
 ### 📦 project structure
 ```
 baekjoon-model
