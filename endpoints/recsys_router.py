@@ -12,6 +12,6 @@ router = APIRouter(
 # ex) {problems : { 0 : 123, 1 : 13, 2 : 14}} 
 @router.get("/random")
 async def get_random(user_id: str, num: int):
-    result = data.sample(n=num).to_dict(orient='records')
-    result = { i : problem["problem_id"] for i, problem in enumerate(result) }
+    result = list(data.sample(n=num).to_dict(orient='records'))
+    result = [problem['problem_id'] for problem in result]
     return json.dumps({"problems": result})
