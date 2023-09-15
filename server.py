@@ -6,7 +6,6 @@ from typing import List, Optional
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import data
 from endpoints import recsys_router
 
 # App Setting Section
@@ -21,10 +20,3 @@ app.add_middleware(
 
 # Include router
 app.include_router(recsys_router.router)
-
-# Post Example
-# @app.post("/api/summary")
-# async def summary(text: Text):
-#     response = get_summary(text.text)
-#     return {"result": response}
-
