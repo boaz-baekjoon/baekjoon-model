@@ -3,7 +3,7 @@
 ### 🖥️ Opening a server
 ```
 cd baekjoon-model
-uvicorn server:app --host "your.ip.address.4" --reload
+uvicorn server:app --host 0.0.0.0 --port {PORTNUM} --reload
 ```
 
 ### 📦 project structure
