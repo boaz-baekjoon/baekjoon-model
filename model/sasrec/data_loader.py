@@ -44,7 +44,7 @@ def random_neg(l, r, s):
         t = np.random.randint(l, r)
     return t
 
-def sample_batch(user_train, usernum, itemnum, batch_size, maxlen, SEED):
+def sample_batch(user_train, usernum, itemnum, batch_size, maxlen):
     # batch_size x maxlen (default : 128 x 200)
     def sample():
         user = np.random.randint(1, usernum + 1)
@@ -70,7 +70,6 @@ def sample_batch(user_train, usernum, itemnum, batch_size, maxlen, SEED):
         
         return (user, seq, pos, neg)
     
-    np.random.seed(SEED)
     user_ids = []
     seqs = []
     poss = []

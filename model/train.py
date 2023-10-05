@@ -32,16 +32,19 @@ def readArguments(opts=sys.argv[1:]): # run baekjoon-model folder
 
 args = readArguments(sys.argv[1:])
 
-if not os.path.isdir('./model/results/sasrec/' + args.dataset + '_' + args.train_dir):
-    os.makedirs('./model/results/sasrec/' + args.dataset + '_' + args.train_dir, exist_ok=False)
-with open(os.path.join('./model/results/sasrec/' + args.dataset + '_' + args.train_dir, 'args.txt'), 'w') as f:
-    f.write('\n'.join([str(k) + ',' + str(v) for k, v in sorted(vars(args).items(), key=lambda x: x[0])]))
-f.close()
-
 # load dataset
 dataset = data_partition(args.dataset)
 user_train, user_valid, user_test, usernum, itemnum = dataset
 num_batch = len(user_train) // args.batch_size
+
+if not os.path.isdir('./model/results/sasrec/' + args.dataset + '_' + args.train_dir):
+    os.makedirs('./model/results/sasrec/' + args.dataset + '_' + args.train_dir, exist_ok=False)
+with open(os.path.join('./model/results/sasrec/' + args.dataset + '_' + args.train_dir, 'args.txt'), 'w') as f:
+    f.write('\n'.join([str(k) + ',' + str(v) for k, v in sorted(vars(args).items(), key=lambda x: x[0])]))
+    f.write('\n')
+    f.write('\n'.join(['usernum,' + str(usernum), 'itemnum,' + str(itemnum)]))
+
+f.close()
 
 # cc = 0.0
 # for u in user_train:
@@ -83,7 +86,7 @@ t0 = time.time()
 for epoch in range(epoch_start_idx, args.num_epochs + 1):
     if args.inference_only: break # just to decrease identition
     for step in range(num_batch): # tqdm(range(num_batch), total=num_batch, ncols=70, leave=False, unit='b'):
-        u, seq, pos, neg = sample_batch(user_train, usernum, itemnum, args.batch_size, args.maxlen, 2023)
+        u, seq, pos, neg = sample_batch(user_train, usernum, itemnum, args.batch_size, args.maxlen)
         u, seq, pos, neg = np.array(u), np.array(seq), np.array(pos), np.array(neg)
         pos_logits, neg_logits = model(u, seq, pos, neg)
         pos_labels, neg_labels = torch.ones(pos_logits.shape, device=args.device), torch.zeros(neg_logits.shape, device=args.device)
