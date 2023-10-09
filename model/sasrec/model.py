@@ -112,10 +112,37 @@ class SASRec(torch.nn.Module):
         
         output_seqs = self.model_layers(seqs)
         
-        final_seq = output_seqs[:,-1,:] # last item emb -> 우리의 task에서는 어떤 것을 고려해야 할까? (mean, sum, ...)
+        # final_seq = output_seqs[:,-1,:] # last item emb -> 우리의 task에서는 어떤 것을 고려해야 할까? (mean, sum, ...)
+        # item_embs = self.item_emb(torch.LongTensor(item_indices).to(self.dev)) # candidate sets embed
+        # candidate_logits = item_embs.matmul(final_seq.unsqueeze(-1)).squeeze(-1)
         
-        item_embs = self.item_emb(torch.LongTensor(item_indices).to(self.dev)) # candidate sets embed
-        
-        candidate_logits = item_embs.matmul(final_seq.unsqueeze(-1)).squeeze(-1)
+        final_seq = output_seqs
+        item_embs = self.item_emb(torch.LongTensor(item_indices).to(self.dev))
+        candidate_logits = final_seq.squeeze().matmul(item_embs.T).sum(dim=0)
 
         return candidate_logits
+
+    def predict_for_user_sq(self, sequence:list, item_num, problem_list:list, args):
+
+        # padding
+        seq = np.zeros([args.maxlen], dtype=np.int32)
+        idx = args.maxlen - 1
+        for i in reversed(sequence):
+            seq[idx] = i
+            idx -= 1
+            if idx == -1: break
+            
+        # retrieval
+        rated = set(sequence)
+        rated.add(0)
+        item_idx = []
+        
+        for _ in range(100):
+                    t = problem_list.sample(n=1)
+                    while t in rated: t = problem_list.sample(n=1)
+                    item_idx.append(t)
+
+        predict = self.predict(*[np.array(l) for l in [[1], [seq], item_idx]])
+        predict = predict[0]
+        output = [item_idx[idx] for idx in predict.argsort()[-item_num:]]
+        return output

@@ -1,12 +1,8 @@
-import json
-import pandas as pd
-from typing import List, Optional
-
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from endpoints import recsys_router
+from init_model import args, infer_model
 
 # App Setting Section
 app = FastAPI()
