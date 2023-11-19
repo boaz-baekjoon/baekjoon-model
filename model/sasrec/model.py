@@ -81,8 +81,10 @@ class SASRec(torch.nn.Module):
         for i in range(self.num_blocks):
             # self-attention layer
             Q = self.attention_layernorms[i](seqs) # normalize
+            
             mha_outputs, _ = self.attention_layers[i](Q, seqs, seqs, 
                                                       attn_mask=attention_mask)  # 실험2
+            
             seqs = Q + mha_outputs # residual connection
             
             # P-W FNN layer
@@ -109,12 +111,7 @@ class SASRec(torch.nn.Module):
         return pos_logits, neg_logits
     
     def predict(self, user_ids, seqs, item_indices):
-        
         output_seqs = self.model_layers(seqs)
-        
-        # final_seq = output_seqs[:,-1,:] # last item emb -> 우리의 task에서는 어떤 것을 고려해야 할까? (mean, sum, ...)
-        # item_embs = self.item_emb(torch.LongTensor(item_indices).to(self.dev)) # candidate sets embed
-        # candidate_logits = item_embs.matmul(final_seq.unsqueeze(-1)).squeeze(-1)
         
         final_seq = output_seqs
         item_embs = self.item_emb(torch.LongTensor(item_indices).to(self.dev))
@@ -122,7 +119,7 @@ class SASRec(torch.nn.Module):
 
         return candidate_logits
 
-    def predict_for_user_sq(self, sequence:list, item_num, problem_list:list, args):
+    def predict_for_user_sq(self, sequence:list, item_num, problem_list, args):
 
         # padding
         seq = np.zeros([args.maxlen], dtype=np.int32)
@@ -130,19 +127,21 @@ class SASRec(torch.nn.Module):
         for i in reversed(sequence):
             seq[idx] = i
             idx -= 1
-            if idx == -1: break
+            if idx == -1: 
+                break
             
         # retrieval
         rated = set(sequence)
         rated.add(0)
         item_idx = []
-        
-        for _ in range(100):
-                    t = problem_list.sample(n=1)
-                    while t in rated: t = problem_list.sample(n=1)
-                    item_idx.append(t)
 
-        predict = self.predict(*[np.array(l) for l in [[1], [seq], item_idx]])
-        predict = predict[0]
-        output = [item_idx[idx] for idx in predict.argsort()[-item_num:]]
+        for _ in range(100):
+            t = problem_list['problem_id'].sample(n=1).iloc[0]
+            while t in rated: t = problem_list['problem_id'].sample(n=1).iloc[0]
+            item_idx.append(t)
+        
+        predict = self.predict(*[np.array(l) for l in [[1], [seq], item_idx]]).cpu().detach()
+        
+        predict = np.array(predict, dtype=int)
+        output = [item_idx[idx] for idx in list(np.argsort(predict)[-item_num:])]
         return output
