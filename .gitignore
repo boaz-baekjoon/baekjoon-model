@@ -1,3 +1,5 @@
 .idea
 data
 model/results
+*.pyc
+*.log
