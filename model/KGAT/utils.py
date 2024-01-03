@@ -18,18 +18,25 @@ def early_stopping(recall_list, stopping_steps):
 def save_model(model, model_dir, current_epoch, last_best_epoch=None):
     if not os.path.exists(model_dir):
         os.makedirs(model_dir)
-    model_state_file = os.path.join(model_dir, 'model_epoch{}.pth'.format(current_epoch))
-    torch.save({'model_state_dict': model.state_dict(), 'epoch': current_epoch}, model_state_file)
+    model_state_file = os.path.join(
+        model_dir, "model_epoch{}.pth".format(current_epoch)
+    )
+    torch.save(
+        {"model_state_dict": model.state_dict(), "epoch": current_epoch},
+        model_state_file,
+    )
 
     if last_best_epoch is not None and current_epoch != last_best_epoch:
-        old_model_state_file = os.path.join(model_dir, 'model_epoch{}.pth'.format(last_best_epoch))
+        old_model_state_file = os.path.join(
+            model_dir, "model_epoch{}.pth".format(last_best_epoch)
+        )
         if os.path.exists(old_model_state_file):
-            os.system('rm {}'.format(old_model_state_file))
+            os.system("rm {}".format(old_model_state_file))
 
 
 def load_model(model, model_path):
-    checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
-    model.load_state_dict(checkpoint['model_state_dict'])
+    checkpoint = torch.load(model_path, map_location=torch.device("cpu"))
+    model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
     return model
 
@@ -42,13 +49,15 @@ def precision_at_k_batch(hits, k):
     res = hits[:, :k].mean(axis=1)
     return res
 
+
 def recall_at_k_batch(hits, k):
     """
     calculate Recall@k
     hits: array, element is binary (0 / 1), 2-dim
     """
-    res = (hits[:, :k].sum(axis=1) / hits.sum(axis=1))
+    res = hits[:, :k].sum(axis=1) / hits.sum(axis=1)
     return res
+
 
 def ndcg_at_k_batch(hits, k):
     """
@@ -56,17 +65,19 @@ def ndcg_at_k_batch(hits, k):
     hits: array, element is binary (0 / 1), 2-dim
     """
     hits_k = hits[:, :k]
-    dcg = np.sum((2 ** hits_k - 1) / np.log2(np.arange(2, k + 2)), axis=1)
+    dcg = np.sum((2**hits_k - 1) / np.log2(np.arange(2, k + 2)), axis=1)
 
     sorted_hits_k = np.flip(np.sort(hits), axis=1)[:, :k]
-    idcg = np.sum((2 ** sorted_hits_k - 1) / np.log2(np.arange(2, k + 2)), axis=1)
+    idcg = np.sum((2**sorted_hits_k - 1) / np.log2(np.arange(2, k + 2)), axis=1)
 
     idcg[idcg == 0] = np.inf
-    ndcg = (dcg / idcg)
+    ndcg = dcg / idcg
     return ndcg
 
 
-def calc_metrics_at_k(cf_scores, train_user_dict, test_user_dict, user_ids, item_ids, Ks):
+def calc_metrics_at_k(
+    cf_scores, train_user_dict, test_user_dict, user_ids, item_ids, Ks
+):
     """
     cf_scores: (n_users, n_items)
     """
@@ -78,7 +89,9 @@ def calc_metrics_at_k(cf_scores, train_user_dict, test_user_dict, user_ids, item
         test_pos_item_binary[idx][test_pos_item_list] = 1
 
     try:
-        _, rank_indices = torch.sort(cf_scores.cuda(), descending=True)    # try to speed up the sorting process
+        _, rank_indices = torch.sort(
+            cf_scores.cuda(), descending=True
+        )  # try to speed up the sorting process
     except:
         _, rank_indices = torch.sort(cf_scores, descending=True)
     rank_indices = rank_indices.cpu()
@@ -91,10 +104,11 @@ def calc_metrics_at_k(cf_scores, train_user_dict, test_user_dict, user_ids, item
     metrics_dict = {}
     for k in Ks:
         metrics_dict[k] = {}
-        metrics_dict[k]['precision'] = precision_at_k_batch(binary_hit, k)
-        metrics_dict[k]['recall']    = recall_at_k_batch(binary_hit, k)
-        metrics_dict[k]['ndcg']      = ndcg_at_k_batch(binary_hit, k)
+        metrics_dict[k]["precision"] = precision_at_k_batch(binary_hit, k)
+        metrics_dict[k]["recall"] = recall_at_k_batch(binary_hit, k)
+        metrics_dict[k]["ndcg"] = ndcg_at_k_batch(binary_hit, k)
     return metrics_dict
+
 
 def evaluate(model, dataloader, Ks, device):
     test_batch_size = dataloader.test_batch_size
@@ -104,25 +118,39 @@ def evaluate(model, dataloader, Ks, device):
     model.eval()
 
     user_ids = list(test_user_dict.keys())
-    user_ids_batches = [user_ids[i: i + test_batch_size] for i in range(0, len(user_ids), test_batch_size)]
+    user_ids_batches = [
+        user_ids[i : i + test_batch_size]
+        for i in range(0, len(user_ids), test_batch_size)
+    ]
     user_ids_batches = [torch.LongTensor(d) for d in user_ids_batches]
 
     n_items = dataloader.n_items
     item_ids = torch.arange(n_items, dtype=torch.long).to(device)
 
     cf_scores = []
-    metric_names = ['precision', 'recall', 'ndcg']
+    metric_names = ["precision", "recall", "ndcg"]
     metrics_dict = {k: {m: [] for m in metric_names} for k in Ks}
 
-    with tqdm(total=len(user_ids_batches), desc='Evaluating Iteration') as pbar:
+    with tqdm(total=len(user_ids_batches), desc="Evaluating Iteration") as pbar:
         for batch_user_ids in user_ids_batches:
             batch_user_ids = batch_user_ids.to(device)
 
             with torch.no_grad():
-                batch_scores = model(batch_user_ids, item_ids, mode='predict')       # (n_batch_users, n_items)
+                batch_scores = model(
+                    batch_user_ids, item_ids, mode="predict"
+                )  # (n_batch_users, n_items)
 
-            batch_scores = batch_scores.cpu()
-            batch_metrics = calc_metrics_at_k(batch_scores, train_user_dict, test_user_dict, batch_user_ids.cpu().numpy(), item_ids.cpu().numpy(), Ks)
+            batch_scores = (
+                batch_scores.cpu()
+            )
+            batch_metrics = calc_metrics_at_k(
+                batch_scores,
+                train_user_dict,
+                test_user_dict,
+                batch_user_ids.cpu().numpy(),
+                item_ids.cpu().numpy(),
+                Ks,
+            )
 
             cf_scores.append(batch_scores.numpy())
             for k in Ks:
