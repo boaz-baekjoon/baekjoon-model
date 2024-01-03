@@ -185,48 +185,58 @@ class KGAT(nn.Module):
 
 
     def update_attention_batch(self, h_list, t_list, r_idx):
-        r_embed = self.relation_embed.weight[r_idx]
-        W_r = self.trans_M[r_idx]
+        torch.cuda.empty_cache()
+        with torch.no_grad():
+            r_embed = self.relation_embed.weight[r_idx].detach()
+            W_r = self.trans_M[r_idx].detach()
 
-        h_embed = self.entity_user_embed.weight[h_list]
-        t_embed = self.entity_user_embed.weight[t_list]
+            h_embed = self.entity_user_embed.weight[h_list].detach()
+            t_embed = self.entity_user_embed.weight[t_list].detach()
 
-        # Equation (4)
-        r_mul_h = torch.matmul(h_embed, W_r)
-        r_mul_t = torch.matmul(t_embed, W_r)
-        v_list = torch.sum(r_mul_t * torch.tanh(r_mul_h + r_embed), dim=1)
+            # Equation (4)
+            r_mul_h = torch.matmul(h_embed, W_r).detach()
+            r_mul_t = torch.matmul(t_embed, W_r).detach()
+            v_list = torch.sum(r_mul_t * torch.tanh(r_mul_h + r_embed).detach(), dim=1).detach()
         return v_list
 
 
     def update_attention(self, h_list, t_list, r_list, relations):
-        device = self.A_in.device
+        torch.cuda.empty_cache()
+        with torch.no_grad():
+            device = self.A_in.device
 
-        rows = []
-        cols = []
-        values = []
+            rows = []
+            cols = []
+            values = []
 
-        for r_idx in relations:
-            index_list = torch.where(r_list == r_idx)
-            batch_h_list = h_list[index_list]
-            batch_t_list = t_list[index_list]
+            for r_idx in relations:
+                index_list = torch.where(r_list == r_idx)
+                batch_h_list = h_list[index_list]
+                batch_t_list = t_list[index_list]
 
-            batch_v_list = self.update_attention_batch(batch_h_list, batch_t_list, r_idx)
-            rows.append(batch_h_list)
-            cols.append(batch_t_list)
-            values.append(batch_v_list)
+                batch_v_list = self.update_attention_batch(
+                    batch_h_list, batch_t_list, r_idx
+                )
+                rows.append(batch_h_list)
+                cols.append(batch_t_list)
+                values.append(batch_v_list)
 
-        rows = torch.cat(rows)
-        cols = torch.cat(cols)
-        values = torch.cat(values)
+            rows = torch.cat(rows)
+            cols = torch.cat(cols)
+            values = torch.cat(values)
 
-        indices = torch.stack([rows, cols])
-        shape = self.A_in.shape
-        A_in = torch.sparse.FloatTensor(indices, values, torch.Size(shape))
+            indices = torch.stack([rows, cols])
+            shape = self.A_in.shape
+            # A_in = torch.sparse_coo_tensor(indices, values, torch.Size(shape), dtype=torch.float16)
+            A_in = torch.sparse.FloatTensor(indices, values, torch.Size(shape)).detach()
 
-        # Equation (5)
-        A_in = torch.sparse.softmax(A_in.cpu(), dim=1)
-        self.A_in.data = A_in.to(device)
+            # Equation (5)
+            A_in = torch.sparse.softmax(A_in.cpu(), dim=1).detach()
+            self.A_in.data = A_in.to(device)
 
+        # TODO
+        # A_in 새로 생성되고, gradient 가 안 꺼진 채로 올라감!
+        # A_in = A_in.detach() 를  device 보내기 전에 적어주기
 
     def calc_score(self, user_ids, item_ids):
         """
