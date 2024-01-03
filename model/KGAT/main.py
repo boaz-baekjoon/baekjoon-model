@@ -96,7 +96,24 @@ torch.cuda.manual_seed_all(args.seed)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # load data
-data = DataLoaderKGAT(args)
+
+if args.loader_pickle == "none":
+    print("constructing new data, if the args is wrong") 
+    print("please turn off the terminal")
+
+    with open("dataloader_500.pkl", "wb") as f:
+        data = DataLoaderKGAT(args)
+        pickle.dump(data, f)
+        print("dumped pickle!")
+
+else:
+    with open(args.loader_pickle, "rb") as f:
+        print("bringing the data loader from pickle")
+        data = pickle.load(f)
+        print("loaded pickle")
+
+
+print("loading finished...")
 if args.use_pretrain == 1:
     user_pre_embed = torch.tensor(data.user_pre_embed)
     item_pre_embed = torch.tensor(data.item_pre_embed)
@@ -211,8 +228,37 @@ for epoch in range(1, args.n_epoch + 1):
             save_model(model, args.save_dir, epoch, best_epoch)
             print('Save model on epoch {:04d}!'.format(epoch))
             best_epoch = epoch
-            
-    # save metrics
+
+    if epoch % 1 == 0:
+        # save metrics
+        metrics_df = [epoch_list]
+        metrics_cols = ["epoch_idx"]
+        for k in Ks:
+            for m in ["precision", "recall", "ndcg"]:
+                metrics_df.append(metrics_list[k][m])
+                metrics_cols.append("{}@{}".format(m, k))
+        metrics_df = pd.DataFrame(metrics_df).transpose()
+        metrics_df.columns = metrics_cols
+        metrics_df.to_csv(args.save_dir + "/metrics.tsv", sep="\t", index=False)
+
+        # print best metrics
+        best_metrics = (
+            metrics_df.loc[metrics_df["epoch_idx"] == best_epoch].iloc[0].to_dict()
+        )
+        print(
+            "Best CF Evaluation: Epoch {:04d} | Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]".format(
+                int(best_metrics["epoch_idx"]),
+                best_metrics["precision@{}".format(k_min)],
+                best_metrics["precision@{}".format(k_max)],
+                best_metrics["recall@{}".format(k_min)],
+                best_metrics["recall@{}".format(k_max)],
+                best_metrics["ndcg@{}".format(k_min)],
+                best_metrics["ndcg@{}".format(k_max)],
+            )
+        )
+
+
+# save metrics
 metrics_df = [epoch_list]
 metrics_cols = ['epoch_idx']
 for k in Ks:
