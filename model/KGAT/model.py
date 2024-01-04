@@ -223,17 +223,16 @@ class KGAT(nn.Module):
     def update_attention_batch(self, h_list, t_list, r_idx):
         torch.cuda.empty_cache()
         with torch.no_grad():
-            r_embed = self.relation_embed.weight[r_idx].detach()
+            # r_embed = self.relation_embed.weight[r_idx].detach()
             W_r = self.trans_M[r_idx].detach()
 
-            h_embed = self.entity_user_embed.weight[h_list].detach()
-            t_embed = self.entity_user_embed.weight[t_list].detach()
+            # h_embed = self.entity_user_embed.weight[h_list].detach()
+            # t_embed = self.entity_user_embed.weight[t_list].detach()
 
             # Equation (4)
-            r_mul_h = torch.matmul(h_embed, W_r).detach()
-            r_mul_t = torch.matmul(t_embed, W_r).detach()
-            v_list = torch.sum(r_mul_t * torch.tanh(r_mul_h + r_embed).detach(), dim=1).detach()
-        return v_list
+            # r_mul_h = torch.matmul( self.entity_user_embed.weight[h_list], W_r).detach()
+            # r_mul_t = torch.matmul( self.entity_user_embed.weight[t_list], W_r).detach()
+            return torch.sum(torch.matmul( self.entity_user_embed.weight[t_list], W_r) * torch.tanh(torch.matmul( self.entity_user_embed.weight[h_list], W_r) + torch.matmul( self.entity_user_embed.weight[t_list], W_r)).detach(), dim=1).detach()
 
     def update_attention(self, h_list, t_list, r_list, relations):
         torch.cuda.empty_cache()
@@ -256,14 +255,11 @@ class KGAT(nn.Module):
                 cols.append(batch_t_list)
                 values.append(batch_v_list)
 
-            rows = torch.cat(rows)
-            cols = torch.cat(cols)
-            values = torch.cat(values)
 
-            indices = torch.stack([rows, cols])
+            indices = torch.stack([torch.cat(rows), torch.cat(cols)])
             shape = self.A_in.shape
             # A_in = torch.sparse_coo_tensor(indices, values, torch.Size(shape), dtype=torch.float16)
-            A_in = torch.sparse.FloatTensor(indices, values, torch.Size(shape)).detach()
+            A_in = torch.sparse.FloatTensor(indices, torch.cat(values), torch.Size(shape)).detach()
 
             # Equation (5)
             A_in = torch.sparse.softmax(A_in.cpu(), dim=1).detach()
@@ -279,12 +275,12 @@ class KGAT(nn.Module):
         item_ids:  (n_items)
         """
         all_embed = self.calc_cf_embeddings()           # (n_users + n_entities, concat_dim)
-        user_embed = all_embed[user_ids]                # (n_users, concat_dim)
-        item_embed = all_embed[item_ids]                # (n_items, concat_dim)
+        # user_embed = all_embed[user_ids]                # (n_users, concat_dim)
+        # item_embed = all_embed[item_ids]                # (n_items, concat_dim)
 
         # Equation (12)
-        cf_score = torch.matmul(user_embed, item_embed.transpose(0, 1))    # (n_users, n_items)
-        return cf_score
+        # cf_score = torch.matmul(user_embed, item_embed.transpose(0, 1))    # (n_users, n_items)
+        return torch.matmul(all_embed[user_ids], all_embed[item_ids].transpose(0, 1))
 
     def forward(self, *input, mode):
         if mode == "train_cf":

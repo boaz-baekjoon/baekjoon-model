@@ -127,39 +127,40 @@ def evaluate(model, dataloader, Ks, device):
     n_items = dataloader.n_items
     item_ids = torch.arange(n_items, dtype=torch.long).to(device)
 
-    cf_scores = []
+    # cf_scores = []
     metric_names = ["precision", "recall", "ndcg"]
     metrics_dict = {k: {m: [] for m in metric_names} for k in Ks}
 
-    with tqdm(total=len(user_ids_batches), desc="Evaluating Iteration") as pbar:
-        for batch_user_ids in user_ids_batches:
-            batch_user_ids = batch_user_ids.to(device)
+    for batch_user_ids in user_ids_batches:
+        batch_user_ids = batch_user_ids.to(device)
 
-            with torch.no_grad():
-                batch_scores = model(
-                    batch_user_ids, item_ids, mode="predict"
-                )  # (n_batch_users, n_items)
+        with torch.no_grad():
+            batch_scores = model(
+                batch_user_ids, item_ids, mode="predict"
+            )  # (n_batch_users, n_items)
 
-            batch_scores = (
-                batch_scores.cpu()
-            )
-            batch_metrics = calc_metrics_at_k(
-                batch_scores,
-                train_user_dict,
-                test_user_dict,
-                batch_user_ids.cpu().numpy(),
-                item_ids.cpu().numpy(),
-                Ks,
-            )
+        batch_scores = (
+            batch_scores.cpu()
+        )
+        batch_metrics = calc_metrics_at_k(
+            batch_scores,
+            train_user_dict,
+            test_user_dict,
+            batch_user_ids.cpu().numpy(),
+            item_ids.cpu().numpy(),
+            Ks,
+        )
 
-            cf_scores.append(batch_scores.numpy())
-            for k in Ks:
-                for m in metric_names:
-                    metrics_dict[k][m].append(batch_metrics[k][m])
-            pbar.update(1)
+        # cf_scores.append(batch_scores.numpy())
+        for k in Ks:
+            for m in metric_names:
+                metrics_dict[k][m].append(batch_metrics[k][m])
 
-    cf_scores = np.concatenate(cf_scores, axis=0)
+    # cf_scores = np.concatenate(cf_scores, axis=0)
     for k in Ks:
         for m in metric_names:
+            #print(f"k : {k}, m : {m}, {np.concatenate(metrics_dict[k][m]).mean()}")
             metrics_dict[k][m] = np.concatenate(metrics_dict[k][m]).mean()
-    return cf_scores, metrics_dict
+    
+    print(f"metrics_dict : {metrics_dict}")
+    return metrics_dict

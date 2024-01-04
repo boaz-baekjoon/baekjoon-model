@@ -278,7 +278,7 @@ for epoch in range(1, args.n_epoch + 1):
     # evaluate cf
     if (epoch % args.evaluate_every) == 0 or epoch == args.n_epoch:
         time6 = time()
-        _, metrics_dict = evaluate(model, data, Ks, device)
+        metrics_dict = evaluate(model, data, Ks, device)
         print(
             "CF Evaluation: Epoch {:04d} | Total Time {:.1f}s | Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]".format(
                 epoch,
