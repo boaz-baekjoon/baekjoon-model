@@ -8,3 +8,8 @@ class RandomRequest(BaseModel):
 class UserIDRequest(BaseModel):
     user_id_list : List[str]
     problem_num : int
+    
+class CategoryRequest(BaseModel):
+    user_id : str
+    category : int
+    problem_num : int
