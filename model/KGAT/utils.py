@@ -110,8 +110,8 @@ def calc_metrics_at_k(
     return metrics_dict
 
 
-def evaluate(model, dataloader, Ks, device):
-    test_batch_size = dataloader.test_batch_size
+def evaluate(model, dataloader, Ks, device, args):
+    test_batch_size = args.test_batch_size #dataloader.test_batch_size
     train_user_dict = dataloader.train_user_dict
     test_user_dict = dataloader.test_user_dict
 

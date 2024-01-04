@@ -30,17 +30,17 @@ def parse_kgat_args(opts=sys.argv[1:]):
     parser.add_argument("--pretrain_model_path", nargs="?", default="trained_model/model.pth", help="Path of stored model.",)
 
     parser.add_argument("--num_workers", type=int, default=4)
-    parser.add_argument("--cf_batch_size", type=int, default=256, help="CF batch size.")
-    parser.add_argument("--kg_batch_size", type=int, default=256, help="KG batch size.")
-    parser.add_argument("--test_batch_size", type=int, default=5000,  # 10000 help="Test batch size (the user number to test every batch).",
+    parser.add_argument("--cf_batch_size", type=int, default=65536, help="CF batch size.")
+    parser.add_argument("--kg_batch_size", type=int, default=65536, help="KG batch size.")
+    parser.add_argument("--test_batch_size", type=int, default=20000,  # 10000 help="Test batch size (the user number to test every batch).",
     )
 
-    parser.add_argument("--embed_dim", type=int, default=32, help="User / entity Embedding size.")
+    parser.add_argument("--embed_dim", type=int, default=16, help="User / entity Embedding size.")
     parser.add_argument("--relation_dim", type=int, default=16, help="Relation Embedding size.")  # 64)
 
     parser.add_argument("--laplacian_type", type=str, default="random-walk", help="Specify the type of the adjacency (laplacian) matrix from {symmetric, random-walk}.",)
     parser.add_argument("--aggregation_type", type=str, default="bi-interaction", help="Specify the type of the aggregation layer from {gcn, graphsage, bi-interaction}.",)
-    parser.add_argument("--conv_dim_list", nargs="?", default="[32, 16]",  # [64, 32, 16] help="Output sizes of every aggregation layer.",
+    parser.add_argument("--conv_dim_list", nargs="?", default="[16, 8]",  # [64, 32, 16] help="Output sizes of every aggregation layer.",
     )
     parser.add_argument("--mess_dropout", nargs="?", default="[0.1, 0.1]",  # [0.1, 0.1, 0.1] help="Dropout probability w.r.t. message dropout for each deep layer. 0: no dropout.",
     )
@@ -48,13 +48,13 @@ def parse_kgat_args(opts=sys.argv[1:]):
     parser.add_argument("--kg_l2loss_lambda", type=float, default=1e-5, help="Lambda when calculating KG l2 loss.",)
     parser.add_argument("--cf_l2loss_lambda", type=float, default=1e-5, help="Lambda when calculating CF l2 loss.",)
 
-    parser.add_argument("--lr", type=float, default=0.0001, help="Learning rate.")
-    parser.add_argument("--n_epoch", type=int, default=100, help="Number of epoch."  # 1000
+    parser.add_argument("--lr", type=float, default=0.05, help="Learning rate.")
+    parser.add_argument("--n_epoch", type=int, default=50, help="Number of epoch."  # 1000
     )
     parser.add_argument("--stopping_steps", type=int, default=100, help="Number of epoch for early stopping",)
 
-    parser.add_argument("--cf_print_every", type=int, default=100, help="Iter interval of printing CF loss.")
-    parser.add_argument("--kg_print_every", type=int, default=100, help="Iter interval of printing KG loss.")
+    parser.add_argument("--cf_print_every", type=int, default=10, help="Iter interval of printing CF loss.")
+    parser.add_argument("--kg_print_every", type=int, default=10, help="Iter interval of printing KG loss.")
     parser.add_argument("--evaluate_every", type=int, default=1, help="Epoch interval of evaluating CF.",)
 
     parser.add_argument("--Ks", nargs="?", default="[20, 40, 60]",  help="Calculate metric@K when evaluating.")
@@ -94,7 +94,7 @@ if args.loader_pickle == "none":
     print("constructing new data, if the args is wrong") 
     print("please turn off the terminal")
 
-    with open("dataloader_500.pkl", "wb") as f:
+    with open("dataloader_new.pkl", "wb") as f:
         data = DataLoaderKGAT(args)
         pickle.dump(data, f)
         print("dumped pickle!")
@@ -125,7 +125,7 @@ model = KGAT(
 ) 
 if args.use_pretrain == 2:
     model = load_model(model, args.pretrain_model_path)
-
+print("model parameter: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
 model.to(device)
 
 # cf_optimizer = optim.Adam(model.parameters(), lr=args.lr)
@@ -152,24 +152,21 @@ for epoch in range(1, args.n_epoch + 1):
     # train cf
     time1 = time()
     cf_total_loss = 0
-    n_cf_batch = data.n_cf_train // data.cf_batch_size + 1
+    n_cf_batch = data.n_cf_train // args.cf_batch_size + 1
 
     for iter in range(1, n_cf_batch + 1):
         time2 = time()
         cf_batch_user, cf_batch_pos_item, cf_batch_neg_item = data.generate_cf_batch(
-            data.train_user_dict, data.cf_batch_size
+            data.train_user_dict, args.cf_batch_size
         )
-        # cf_batch_user = cf_batch_user.to(device)
-        # cf_batch_pos_item = cf_batch_pos_item.to(device)
-        # cf_batch_neg_item = cf_batch_neg_item.to(device)
+
         cf_batch_user = cf_batch_user.to(device)
         cf_batch_pos_item = cf_batch_pos_item.to(device)
         cf_batch_neg_item = cf_batch_neg_item.to(device)
 
         
         cf_batch_loss = model(cf_batch_user, cf_batch_pos_item, cf_batch_neg_item, mode="train_cf")
-        
-
+                
         if np.isnan(cf_batch_loss.cpu().detach().numpy()):
             print('ERROR (CF Training): Epoch {:04d} Iter {:04d} / {:04d} Loss is nan.'.format(
                 epoch, iter, n_cf_batch
@@ -180,7 +177,7 @@ for epoch in range(1, args.n_epoch + 1):
         cf_optimizer.step()
         cf_optimizer.zero_grad()
         cf_total_loss += cf_batch_loss.item()
-
+                
         if (iter % args.cf_print_every) == 0:
             print(
                 "CF Training: Epoch {:04d} Iter {:04d} / {:04d} | Time {:.1f}s | Iter Loss {:.4f} | Iter Mean Loss {:.4f}".format(
@@ -194,11 +191,17 @@ for epoch in range(1, args.n_epoch + 1):
             )
 
         # break
+    
+    print(
+        "CF Training: Epoch {:04d} Total Iter {:04d} | Total Time {:.1f}s | Iter Mean Loss {:.4f}".format(
+            epoch, n_cf_batch, time() - time1, cf_total_loss / n_cf_batch
+        )
+    )
 
     # train kg
     time3 = time()
     kg_total_loss = 0
-    n_kg_batch = data.n_kg_train // data.kg_batch_size + 1
+    n_kg_batch = data.n_kg_train // args.kg_batch_size + 1
 
     for iter in range(1, n_kg_batch + 1):
         time4 = time()
@@ -208,9 +211,9 @@ for epoch in range(1, args.n_epoch + 1):
             kg_batch_pos_tail,
             kg_batch_neg_tail,
         ) = data.generate_kg_batch(
-            data.train_kg_dict, data.kg_batch_size, data.n_users_entities
+            data.train_kg_dict, args.kg_batch_size, data.n_users_entities
         )
- 
+        
         kg_batch_head = kg_batch_head.to(device)
         kg_batch_relation = kg_batch_relation.to(device)
         kg_batch_pos_tail = kg_batch_pos_tail.to(device)
@@ -224,7 +227,7 @@ for epoch in range(1, args.n_epoch + 1):
             kg_batch_neg_tail,
             mode="train_kg",
         )
-
+        
         if np.isnan(kg_batch_loss.cpu().detach().numpy()):
             print(
                 "ERROR (KG Training): Epoch {:04d} Iter {:04d} / {:04d} Loss is nan.".format(
@@ -236,6 +239,7 @@ for epoch in range(1, args.n_epoch + 1):
         kg_optimizer.step()
         kg_optimizer.zero_grad()
         kg_total_loss += kg_batch_loss.item()
+
 
         if (iter % args.kg_print_every) == 0:
             print(
@@ -278,7 +282,7 @@ for epoch in range(1, args.n_epoch + 1):
     # evaluate cf
     if (epoch % args.evaluate_every) == 0 or epoch == args.n_epoch:
         time6 = time()
-        metrics_dict = evaluate(model, data, Ks, device)
+        metrics_dict = evaluate(model, data, Ks, device, args)
         print(
             "CF Evaluation: Epoch {:04d} | Total Time {:.1f}s | Precision [{:.4f}, {:.4f}], Recall [{:.4f}, {:.4f}], NDCG [{:.4f}, {:.4f}]".format(
                 epoch,
@@ -319,8 +323,8 @@ for epoch in range(1, args.n_epoch + 1):
                 metrics_cols.append("{}@{}".format(m, k))
         metrics_df = pd.DataFrame(metrics_df).transpose()
         metrics_df.columns = metrics_cols
-        metrics_df.to_csv(args.save_dir + "/metrics.tsv", sep="\t", index=False)
-
+        metrics_df.to_csv(args.save_dir + "/metrics.csv", sep="\t", index=False)
+        
         # print best metrics
         best_metrics = (
             metrics_df.loc[metrics_df["epoch_idx"] == best_epoch].iloc[0].to_dict()
@@ -347,7 +351,7 @@ for k in Ks:
         metrics_cols.append("{}@{}".format(m, k))
 metrics_df = pd.DataFrame(metrics_df).transpose()
 metrics_df.columns = metrics_cols
-metrics_df.to_csv(args.save_dir + "/metrics.tsv", sep="\t", index=False)
+metrics_df.to_csv(args.save_dir + "/metrics.csv", sep="\t", index=False)
 
 # print best metrics
 best_metrics = metrics_df.loc[metrics_df["epoch_idx"] == best_epoch].iloc[0].to_dict()

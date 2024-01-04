@@ -176,11 +176,7 @@ class KGAT(nn.Module):
         cf_loss = (-1.0) * F.logsigmoid(pos_score - neg_score)
         cf_loss = torch.mean(cf_loss)
 
-        l2_loss = (
-            _L2_loss_mean(user_embed)
-            + _L2_loss_mean(item_pos_embed)
-            + _L2_loss_mean(item_neg_embed)
-        )
+        l2_loss = (_L2_loss_mean(user_embed) + _L2_loss_mean(item_pos_embed) + _L2_loss_mean(item_neg_embed))
         loss = cf_loss + self.cf_l2loss_lambda * l2_loss
         return loss
 
@@ -264,10 +260,6 @@ class KGAT(nn.Module):
             # Equation (5)
             A_in = torch.sparse.softmax(A_in.cpu(), dim=1).detach()
             self.A_in.data = A_in.to(device)
-
-        # TODO
-        # A_in 새로 생성되고, gradient 가 안 꺼진 채로 올라감!
-        # A_in = A_in.detach() 를  device 보내기 전에 적어주기
 
     def calc_score(self, user_ids, item_ids):
         """
