@@ -23,7 +23,8 @@ async def get_user(input : UserIDRequest):
             user_seq = literal_eval(user_problem_list.iloc[0, 1])
             user_tier = user_detail[user_detail.user_id == user_id].iloc[0, 1]
             
-            problem_list = problem_detail[(problem_detail.problem_level >= user_tier - 3) & (problem_detail.problem_level >= user_tier + 3)]
+            problem_list = problem_detail[(problem_detail.problem_level >= user_tier - 5) & (problem_detail.problem_level <= user_tier + 4)]
+            problem_list = problem_list[~problem_list.problem_id.isin(user_seq)]
             result = infer_model.predict_for_user_sq(
                 sequence=user_seq, 
                 item_num=input.problem_num, 
