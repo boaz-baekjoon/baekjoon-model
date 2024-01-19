@@ -53,6 +53,7 @@ async def get_category(input : CategoryRequest):
         user_seq = literal_eval(user_problem_list.iloc[0, 1])
         
         problem_list = problem_detail[problem_detail.category == category_dict[input.category]]
+        problem_list = problem_list[~problem_list.problem_id.isin(user_seq)]
         result = infer_model.predict_for_user_sq(
             sequence=user_seq, 
             item_num=input.problem_num, 
