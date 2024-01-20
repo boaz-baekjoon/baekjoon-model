@@ -2,9 +2,10 @@ import argparse
 from model.sasrec.model import SASRec
 import torch
 import json
+import os
 
-arg_dir = './model/results/sasrec/baekjoon_test/args.txt'
-weight_dir = './model/results/sasrec/baekjoon_test/SASRec.epoch=5.lr=0.001.layer=2.head=1.hidden=50.maxlen=50.pth'
+arg_dir = os.environ["ARG_PATH"]
+weight_dir = os.environ["MODEL_PATH"]
 
 class make_args():
     def __init__(self):
@@ -37,3 +38,4 @@ args.itemnum = int(args.itemnum)
 infer_model = SASRec(args.usernum, args.itemnum, args).to(args.device)
 
 infer_model.load_state_dict(torch.load(weight_dir, map_location=torch.device(args.device)))
+infer_model.eval()
