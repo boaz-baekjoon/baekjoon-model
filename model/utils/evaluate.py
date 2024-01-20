@@ -1,4 +1,4 @@
-
+import numpy as np
 import random
 import sys
 import copy
@@ -10,10 +10,10 @@ def evaluate(model, dataset, args):
     HT = 0.0
     valid_user = 0.0
 
-    if usernum>10000:
-        users = random.sample(range(1, usernum + 1), 10000)
+    if usernum > 10000:
+        users = random.sample(range(usernum), 10000)
     else:
-        users = range(1, usernum + 1)
+        users = range(usernum)
     for u in users:
 
         if len(train[u]) < 1 or len(test[u]) < 1: continue
@@ -34,11 +34,8 @@ def evaluate(model, dataset, args):
             while t in rated: t = np.random.randint(1, itemnum + 1)
             item_idx.append(t)
 
-        predictions = -model.predict(*[np.array(l) for l in [[u], [seq], item_idx]])
-        predictions = predictions[0] # - for 1st argsort DESC
-
+        predictions = -model.predict(*[np.array(l) for l in [[u], [seq], item_idx]])        
         rank = predictions.argsort().argsort()[0].item()
-
         valid_user += 1
 
         if rank < 10:
@@ -59,9 +56,9 @@ def evaluate_valid(model, dataset, args):
     valid_user = 0.0
     HT = 0.0
     if usernum>10000:
-        users = random.sample(range(1, usernum + 1), 10000)
+        users = random.sample(range(usernum), 10000)
     else:
-        users = range(1, usernum + 1)
+        users = range(usernum)
     for u in users:
         if len(train[u]) < 1 or len(valid[u]) < 1: continue
 
@@ -81,10 +78,7 @@ def evaluate_valid(model, dataset, args):
             item_idx.append(t)
 
         predictions = -model.predict(*[np.array(l) for l in [[u], [seq], item_idx]])
-        predictions = predictions[0]
-
         rank = predictions.argsort().argsort()[0].item()
-
         valid_user += 1
 
         if rank < 10:
