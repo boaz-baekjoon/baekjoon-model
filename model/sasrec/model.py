@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import random
 
 class PointWiseFeedForward(torch.nn.Module):
     def __init__(self, hidden_units, dropout_rate):
@@ -31,7 +32,7 @@ class SASRec(torch.nn.Module):
         
         # embbeding layer
         self.item_emb = torch.nn.Embedding(self.item_num+1, args.hidden_units, padding_idx=0)
-        self.pos_emb = torch.nn.Embedding(args.maxlen, args.hidden_units) # 실험1 : position embedding이 필요할까? (현재 우리의 프로젝트는 sequence dataX)
+        self.pos_emb = torch.nn.Embedding(args.maxlen, args.hidden_units)
         self.emb_dropout = torch.nn.Dropout(p=args.dropout_rate)
         
         # self-attention layer
@@ -76,14 +77,14 @@ class SASRec(torch.nn.Module):
         
         # self-attention layer and P-W FNN layer
         tl = seqs.shape[1] # item sequence len
-        attention_mask = ~torch.tril(torch.ones((tl, tl), dtype=torch.bool, device=self.dev)) # 실험2 : 우리의 task에서 attention mask가 필요한가? 
+        attention_mask = ~torch.tril(torch.ones((tl, tl), dtype=torch.bool, device=self.dev))
         
         for i in range(self.num_blocks):
             # self-attention layer
             Q = self.attention_layernorms[i](seqs) # normalize
             
             mha_outputs, _ = self.attention_layers[i](Q, seqs, seqs, 
-                                                      attn_mask=attention_mask)  # 실험2
+                                                      attn_mask=attention_mask)
             
             seqs = Q + mha_outputs # residual connection
             
@@ -111,11 +112,12 @@ class SASRec(torch.nn.Module):
         return pos_logits, neg_logits
     
     def predict(self, user_ids, seqs, item_indices):
-        output_seqs = self.model_layers(seqs)
-        
-        final_seq = output_seqs
-        item_embs = self.item_emb(torch.LongTensor(item_indices).to(self.dev))
-        candidate_logits = final_seq.squeeze().matmul(item_embs.T).sum(dim=0)
+        with torch.no_grad():
+            output_seqs = self.model_layers(seqs)
+            item_embs = self.item_emb(torch.LongTensor(item_indices).to(self.dev))
+            print(output_seqs.shape)
+            print(item_embs.shape)
+            candidate_logits = output_seqs.squeeze().matmul(item_embs.T).sum(dim=0)
 
         return candidate_logits
 
@@ -131,14 +133,7 @@ class SASRec(torch.nn.Module):
                 break
             
         # retrieval
-        rated = set(sequence)
-        rated.add(0)
-        item_idx = []
-
-        for _ in range(100):
-            t = problem_list['problem_id'].sample(n=1).iloc[0]
-            while t in rated: t = problem_list['problem_id'].sample(n=1).iloc[0]
-            item_idx.append(t)
+        item_idx = random.choices(problem_list, k=100)
         
         predict = self.predict(*[np.array(l) for l in [[1], [seq], item_idx]]).cpu().detach()
         

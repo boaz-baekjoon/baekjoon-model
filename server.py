@@ -16,3 +16,4 @@ app.add_middleware(
 
 # Include router
 app.include_router(recsys_router.router)
+app.include_router(preprocess_router.router)

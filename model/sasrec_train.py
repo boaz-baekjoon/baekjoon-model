@@ -3,6 +3,7 @@ import sys
 import time
 import argparse
 import torch
+import numpy as np
 
 from sasrec.data_loader import *
 from sasrec.model import SASRec
@@ -102,8 +103,8 @@ for epoch in range(epoch_start_idx, args.num_epochs + 1):
         loss.backward()
         adam_optimizer.step()
         print("loss in epoch {} iteration {}: {}".format(epoch, step, loss.item())) # expected 0.4~0.6 after init few epochs
-
-    if epoch % 20 == 0:
+        
+    if epoch % 5 == 0:
         model.eval()
         t1 = time.time() - t0
         T += t1
