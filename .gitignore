@@ -3,3 +3,7 @@ data
 model/results
 *.pyc
 *.log
+*.err
+database
+logs
+.env
