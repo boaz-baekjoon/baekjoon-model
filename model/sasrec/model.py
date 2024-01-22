@@ -115,8 +115,6 @@ class SASRec(torch.nn.Module):
         with torch.no_grad():
             output_seqs = self.model_layers(seqs)
             item_embs = self.item_emb(torch.LongTensor(item_indices).to(self.dev))
-            print(output_seqs.shape)
-            print(item_embs.shape)
             candidate_logits = output_seqs.squeeze().matmul(item_embs.T).sum(dim=0)
 
         return candidate_logits
@@ -134,9 +132,23 @@ class SASRec(torch.nn.Module):
             
         # retrieval
         item_idx = random.choices(problem_list, k=100)
-        
         predict = self.predict(*[np.array(l) for l in [[1], [seq], item_idx]]).cpu().detach()
-        
         predict = np.array(predict, dtype=int)
         output = [item_idx[idx] for idx in list(np.argsort(predict)[-item_num:])]
         return output
+    
+    def return_prob(self, sequence:list, problem_list, args):
+        
+        # padding
+        seq = np.zeros([args.maxlen], dtype=np.int32)
+        idx = args.maxlen - 1
+        for i in reversed(sequence):
+            seq[idx] = i
+            idx -= 1
+            if idx == -1: 
+                break
+            
+        predict = self.predict(*[np.array(l) for l in [[1], [seq], problem_list]]).cpu().detach()
+        predict = np.array(predict, dtype=int)
+        
+        return predict

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from query import *
-from schema.schema import UserIDRequest, CategoryRequest, SimilarIDRequest
+from schema.schema import UserIDRequest, CategoryRequest, SimilarIDRequest, GroupRequest
 from init_model import infer_model, args
 
 from utils.log import make_logger
@@ -93,7 +93,66 @@ async def get_category(input : CategoryRequest):
         user_id_logger.info({f"'type': 'except', 'user_id': '{user_id}', 'problem_list': {userid_problem_list[user_id]}"})
         
     return userid_problem_list
+
+@router.post("/group_rec")
+async def get_group_rec(input : GroupRequest):
+    group_problem_list = dict()
+    user_num = len(input.user_id_list)
     
+    # load sequence
+    each_user_seq = []
+    all_user_seq = []
+    for user_id in input.user_id_list:
+        try:
+            # map user_id to user_id_int
+            user_id_int = query_user_id_map(user_id)
+            if user_id_int == None:
+                raise Exception('user_id_int is None')
+
+            # load user_seq
+            user_seq = literal_eval(query_user_seq(user_id_int))
+            if user_seq == None:
+                raise Exception('user_seq is None')
+            
+            each_user_seq.append(user_seq)
+            all_user_seq.extend(user_seq)
+        except:
+            user_seq = []
+            each_user_seq.append(user_seq)
+
+    cat = 0
+    for cat_num in input.category_num:
+        print("class: ", cat)
+        if cat_num == 0:
+            group_problem_list[cat] = []
+            cat +=1
+            continue
+        problem_list = query_problem_list(input.tier-2, input.tier+2, cat, True)
+        try:
+            problem_list = random.sample(problem_list, 100)
+        except:
+            problem_list = random.sample(problem_list, len(problem_list))
+        problem_list = list(set(problem_list) - set(all_user_seq))
+        
+        # predict
+        predict_array = np.zeros((user_num, len(problem_list)))
+        
+        for user_idx in range(user_num):
+            if len(each_user_seq[user_idx]) == 0:
+                predict_array[user_idx] = np.zeros(len(problem_list))
+                continue
+            predict = infer_model.return_prob(
+                sequence=each_user_seq[user_idx], 
+                problem_list=problem_list,
+                args=args
+            )
+            predict_array[user_idx] = predict
+        print(len(problem_list))
+        print(predict_array.mean(axis=0).shape)
+        group_problem_list[cat] = [problem_list[idx] for idx in list(np.argsort(predict_array.mean(axis=0))[-cat_num:])]     
+        cat += 1   
+    return group_problem_list
+        
 
 @router.post("/similar_id")
 async def get_problem_id(input : SimilarIDRequest):
