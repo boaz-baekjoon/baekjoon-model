@@ -122,7 +122,6 @@ async def get_group_rec(input : GroupRequest):
 
     cat = 0
     for cat_num in input.category_num:
-        print("class: ", cat)
         if cat_num == 0:
             group_problem_list[cat] = []
             cat +=1
