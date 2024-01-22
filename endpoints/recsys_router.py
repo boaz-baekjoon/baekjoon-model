@@ -147,8 +147,6 @@ async def get_group_rec(input : GroupRequest):
                 args=args
             )
             predict_array[user_idx] = predict
-        print(len(problem_list))
-        print(predict_array.mean(axis=0).shape)
         group_problem_list[cat] = [problem_list[idx] for idx in list(np.argsort(predict_array.mean(axis=0))[-cat_num:])]     
         cat += 1   
     return group_problem_list
@@ -165,7 +163,6 @@ async def get_problem_id(input : SimilarIDRequest):
         if len(set(similar_problem_list) & set(unique_problem_list)) >= input.problem_num:
             break
         top_n += 10
-        print(top_n)
         similar_problem_list = cosine_sim[input.problem_id].argsort()[::-1][1:top_n].tolist()
     similar_problem_list = list(set(similar_problem_list) & set(unique_problem_list))
     problem_id_dict[input.problem_id] = np.random.choice(similar_problem_list, input.problem_num, replace=False).tolist()
