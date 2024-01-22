@@ -1,4 +1,4 @@
-import pandas as pd
+import numpy as np
 import duckdb
 from ast import literal_eval
 
@@ -37,3 +37,6 @@ def query_problem_list(lower_tier, upper_tier, category_int, use_tier_and_cat=Fa
         problem_list = [int(problem[0]) for problem in result] if result else None
     duck_db.close()
     return problem_list
+
+cosine_sim = np.load('data/cosine_sim.npy')
+unique_problem_list = np.load('data/problem_list.npy').tolist()

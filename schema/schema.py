@@ -13,3 +13,7 @@ class CategoryRequest(BaseModel):
     user_id : str
     category : int
     problem_num : int
+    
+class SimilarIDRequest(BaseModel):
+    problem_id : int
+    problem_num : int

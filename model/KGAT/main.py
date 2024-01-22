@@ -312,6 +312,18 @@ for epoch in range(1, args.n_epoch + 1):
             save_model(model, args.save_dir, epoch, best_epoch)
             print("Save model on epoch {:04d}!".format(epoch))
             best_epoch = epoch
+            
+            # save item embeddings
+            all_embed = model.save_calc_embedding()
+
+            item_idx = np.arange(data.n_items)
+            item_embed = all_embed[item_idx]
+            print(data.n_items)
+            print(item_embed.shape)
+
+            with open(args.save_dir +"item_embed.npy", "wb") as f:
+                np.save(f, item_embed)
+
 
     if epoch % 1 == 0:
         # save metrics

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from query import *
-from schema.schema import UserIDRequest, CategoryRequest
+from schema.schema import UserIDRequest, CategoryRequest, SimilarIDRequest
 from init_model import infer_model, args
 
 from utils.log import make_logger
@@ -95,12 +95,22 @@ async def get_category(input : CategoryRequest):
     return userid_problem_list
     
 
-# @router.get("/similar_id")
-# async def get_problem_id(problem_id : int):
-#     similar_problem_list = dict()
-#     result = list(problem_list.sample(n=3).to_dict(orient='records'))
-#     similar_problem_list['problems'] = [problem['problem_id'] for problem in result]
-#     return similar_problem_list
+@router.post("/similar_id")
+async def get_problem_id(input : SimilarIDRequest):
+    if input.problem_id not in unique_problem_list:
+        return {'error': 'problem_id is not in problem_list'}
+    top_n = 11
+    problem_id_dict = dict()
+    similar_problem_list = cosine_sim[input.problem_id].argsort()[::-1][1:top_n].tolist()
+    while True:
+        if len(set(similar_problem_list) & set(unique_problem_list)) >= input.problem_num:
+            break
+        top_n += 10
+        print(top_n)
+        similar_problem_list = cosine_sim[input.problem_id].argsort()[::-1][1:top_n].tolist()
+    similar_problem_list = list(set(similar_problem_list) & set(unique_problem_list))
+    problem_id_dict[input.problem_id] = np.random.choice(similar_problem_list, input.problem_num, replace=False).tolist()
+    return problem_id_dict
 
 # @router.get("/similar_text")
 # async def get_problem_id(problem_text : str):

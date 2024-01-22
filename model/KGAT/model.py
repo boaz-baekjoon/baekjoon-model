@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 
 def _L2_loss_mean(x):
@@ -273,6 +274,13 @@ class KGAT(nn.Module):
         # Equation (12)
         # cf_score = torch.matmul(user_embed, item_embed.transpose(0, 1))    # (n_users, n_items)
         return torch.matmul(all_embed[user_ids], all_embed[item_ids].transpose(0, 1))
+    
+    def save_calc_embedding(self):
+        all_embed = self.calc_cf_embeddings()
+        if torch.cuda.is_available():
+            return all_embed.detach().cpu().numpy()
+        else:
+            return all_embed.detach().numpy()
 
     def forward(self, *input, mode):
         if mode == "train_cf":
