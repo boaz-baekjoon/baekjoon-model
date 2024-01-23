@@ -1,0 +1,43 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.6.1
+    restart: always
+    container_name: qdrant
+    networks:
+      - model-network
+    ports:
+      - ${QDRANT_REST}:${QDRANT_REST}
+      - ${QDRANT_GRPC}:${QDRANT_GRPC}
+    expose:
+      - ${QDRANT_REST}
+      - ${QDRANT_GRPC}
+    configs:
+      - source: qdrant_config
+        target: /qdrant/config/production.yaml
+    volumes:
+      - ./qdrant_data:/qdrant_data
+  server:
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - ${BACKEND_PORT}:${BACKEND_PORT}
+    networks:
+      - model-network
+    volumes:
+      - ./logs:/code/logs
+    command:
+      - sh 
+      - -c
+      - uvicorn server:app --workers 1  --bind 0.0.0.0:${BACKEND_PORT} --reload --log-level debug
+
+configs:
+  qdrant_config:
+    content: |
+            log_level: INFO  
+
+networks:
+  model-network: 

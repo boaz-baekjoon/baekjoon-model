@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from qdrant_client import QdrantClient
 
 from query import *
 from schema.schema import UserIDRequest, CategoryRequest, SimilarIDRequest, GroupRequest
@@ -7,6 +8,7 @@ from init_model import infer_model, args
 from utils.log import make_logger
 from ast import literal_eval
 
+import os
 import random
 
 user_id_logger = make_logger("user_id_logger")
@@ -14,6 +16,9 @@ user_id_logger = make_logger("user_id_logger")
 router = APIRouter(
     prefix="/baekjun"
 )
+
+
+db = QdrantClient("localhost", port=os.environ["QDRANT_PORT"])
 
 @router.post("/user_id")
 async def get_user(input : UserIDRequest):
@@ -167,10 +172,21 @@ async def get_problem_id(input : SimilarIDRequest):
     problem_id_dict[input.problem_id] = np.random.choice(similar_problem_list, input.problem_num, replace=False).tolist()
     return problem_id_dict
 
-# @router.get("/similar_text")
-# async def get_problem_id(problem_text : str):
-#     similar_problem_list = dict()
-#     result = list(problem_list.sample(n=3).to_dict(orient='records'))
-#     similar_problem_list['problems'] = [problem['problem_id'] for problem in result]
-#     return similar_problem_list
+
+@router.get("/similar")
+async def get_problem_id(problem_idx : int):
+    res = db.retrieve(
+        collection_name='items',
+        ids=[problem_idx]
+    )
+    target_vector = res.result[0].vector
+    search_response = db.search(
+        collection_name='items',
+        query_vector=target_vector,
+        top=10  # Retrieve top 10 similar items
+    )
+    similar_items = search_response.result
+    simlar_idx = [item.id for item in similar_items]
+    
+    return simlar_idx
 
