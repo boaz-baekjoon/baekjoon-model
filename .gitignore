@@ -7,3 +7,4 @@ model/results
 database
 logs
 .env
+venv/
