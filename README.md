@@ -37,7 +37,7 @@ Used the problem solving status and problem information data of silver level or 
 ## Recommendation System
 Figure describing overall system design of the recommendation system. 
 
-![Alt text](image.png)
+![Alt text](./images/image.png)
 ## how to use
 
 ### 🖥️ Running the server locally
