@@ -1,83 +1,57 @@
-## Model Server
 
-### 🖥️ Opening a server
+# ![Title](https://capsule-render.vercel.app/api?type=transparent&fontColor=000000&text=백발백준%20-%20BOJ%20PS%20problem%20Recsys%20Server%20&height=200&fontSize=35&desc=BOAZ%2019th%20Big%20Data%20Conference%202024%20%20&descAlignY=76&descAlign=50)
+
+## Abstract
+**BOJ PS problem Recsys Server bulit with** 
+
+<img src="https://img.shields.io/badge/Python-3776AB?style=flat&logo=Python&logoColor=white"/>
+<img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=flat&logo=PyTorch&logoColor=white"/>
+<img src="https://img.shields.io/badge/FastAPI-009688?style=flat&logo=FastAPI&logoColor=white"/>
+<img src="https://img.shields.io/badge/DuckDB-FFF000?style=flat&logo=DuckDB&logoColor=white"/>
+
+## Introduction
+This GitHub repository contains the source code for BOJ problem recommendation system server, which provides APIs that the [baekjoon Bot](https://github.com/boaz-baekjoon/baekjoon-discord-bot) server can request in various user needs situations. The recommendation was implemented through a sequential recommendation model and a hybrid graph model combining Collaborative Filtering (CF) and Knowledge Graph (KG). These AI models were built with Pytorch and served with FastAPI. In addition, appropriate transformation was performed on the [pre-loaded PostgreSQL](https://github.com/boaz-baekjoon/baekjoon-celery-scraper-airflow) data and a data mart for the model server was built using duckdb.
+
+## Data
+Used the problem solving status and problem information data of silver level or higher users crawled from [BOJ](https://www.acmicpc.net/).
+- user number : about 110,000 people
+- problum number : about 30000
+- interaction : about 17 million
+
+## Recommendation Model
+
+### SASRec
+- SASRec is a classically used model in the field of sequential recommendation.
+- Chose SASRec as a personalized recommendation model due to its parallel processing capability, efficiency in space complexity, and fast inference time.
+- [The paper author's legacy tensorflow code](https://github.com/kang205/SASRec) was rewritten in pytorch.
+- The default values ​from the paper were used as hyperparameters.
+
+
+### KGAT
+- KGAT is a hybrid graph model that models Collaborative Filtering information and side information as CF graph and knowledge graph, respectively.
+- Used KGAT to generate item embeddings by appropriately using CF information and side information.
+- Some typos and unnecessary operations were corrected in [the existing author's code](https://github.com/xiangwang1223/knowledge_graph_attention_network).
+- For most hyperparameters, the default values ​​from the paper were used. However, we reduce the embedding dimension and number of layers 
+- As a result of the experiment, when the embedding dimension was low, loss was reduced better. Perhaps the recommendation problem we are trying to solve is expected to be at a low dimension.
+
+## Recommendation System
+Figure describing overall system design of the recommendation system. 
+
+![Alt text](image.png)
+## how to use
+
+### 🖥️ Running the server locally
 ```
 cd baekjoon-model
 uvicorn server:app --host 0.0.0.0 --port {PORTNUM} --reload
 ```
 
-### 📦 project structure
-```
-baekjoon-model
-├─ schema
-│  └─ schema.py
-├─ endpoints
-│  ├─ recsys_router.py 
-│  ├─ io_router.py 
-│  └─ preprocess_router.py 
-├─ model
-│  ├─ train.py
-│  ├─ test.py
-│  ├─ sasrec
-│  │  ├─ module
-│  │  │  └─ sample_module.py
-│  │  ├─ data_loader.py
-│  │  ├─ loss.py
-│  │  └─ model.py
-│  ├─ utils
-│  │  └─ sample_utils.py
-│  └─ results
-├─ data_preprocessing
-│  └─ preprocessing.py
-├─ data
-├─ utils
-├─ server.py
-├─ database.py
-├─ .gitignore
-└─ README.md
-```
+### 📄 endpoints docs
 
-### ✍️ Commit Message Convention
+|endpoint | method | Model | explanation | Request | Response |
+|--------|----|------|----------|------|------|
+|baekjun/user_id |POST|SASRec|Recommend problems based on the user's history of problems solved in the past.|{<br>”user_id_list”: List[str],<br>”problem_num”:int<br>}|{<br>”{user_id1}”:[problems_list],<br>”{user_id2}”:<br>[problems_list]<br>...}
+|baekjun/category |POST|SASRec|Recommend problems of the problem type selected by user.|{<br>”user_id_list”: str,<br>”category”:int<br>”problem_num”:int<br>}|{<br>”user_id” : List[int]<br>}|
+|baekjun/group_rec |POST|SASRec|Recommend problems of the tier and problem type selected by group users.|{<br>”user_id_list” : List[str],<br>”tier” : int,<br>”category_num” : List[int]<br>}| {<br>”0” : List[int],<br>”1” : List[int],<br>…,<br>”9” List[int]<br>}|
+|baekjun/similar_id |POST|KGAT|Recommend problems similar to the problem submitted by the user.|{<br>”problem_id” : int,<br>”problem_num” : int<br>}|{<br>”problem_id” : List[int]<br>}|
 
-**Types**
-```
-- Feat : 기능 추가
-- Chore : 기타 수정
-- Fix : 버그 수정
-- Docs : 문서 수정
-- Dev : dependency 수정
-- Test : 테스트 코드, 리팩토링 테스트 코드 추가
-- Comment : 필요한 주석 추가 및 변경
-- Rename : 파일 또는 폴더 명을 수정하거나 옮기는 작업만인 경우
-- Remove : 파일을 삭제하는 작업만 수행한 경우
-- Style : 코드 formatting, 세미콜론 누락, 코드 자체의 변경이 없는 경우
-- Refactor : 코드 리팩토링
-- !BREAKING CHANGE : 커다란 API 변경의 경우
-- !HOTFIX : 급하게 치명적인 버그를 고쳐야 하는 경우
-```
-
-**Issue Labels**
-```
-- Feat: 기능 추가
-- Chore: 코드 정리나 주석 추가 등 구현과 직접적으로 관련이 없는 내용
-- Docs: README 등의 문서화
-- Fix: 버그 수정 또는 예외처리
-- Experiment : model log, weight, modification, ...
-```
-
-**Message**
-- 커밋 유형과 이슈 번호 명시
-    - git commit -m "[커밋 유형] #[이슈 번호] [커밋메시지]"
-- 제목과 본문을 빈행을 분리
-    - 커밋 유형 이후 제목과 본문은 한글로 작성하여 내용이 잘 전달될 수 있도록
-    - 본문에는 변경한 내용과 이유 설명
-- 제목 첫 글자는 대문자로 끝에 . 금지
-- 제목은 영문 기준 50자 이내로 작성
-
-**Message Examples**
-```
-[Feat] Add data preprocessing code
-[Fix] Fix bugs
-[Docs] Update .gitignore
-[Comment] Add comments
-```
