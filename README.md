@@ -2,12 +2,7 @@
 # ![Title](https://capsule-render.vercel.app/api?type=transparent&fontColor=000000&text=백발백준%20-%20BOJ%20PS%20problem%20Recsys%20Server%20&height=200&fontSize=35&desc=BOAZ%2019th%20Big%20Data%20Conference%202024%20%20&descAlignY=76&descAlign=50)
 
 ## Abstract
-**BOJ PS problem Recsys Server bulit with** 
-
-<img src="https://img.shields.io/badge/Python-3776AB?style=flat&logo=Python&logoColor=white"/>
-<img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=flat&logo=PyTorch&logoColor=white"/>
-<img src="https://img.shields.io/badge/FastAPI-009688?style=flat&logo=FastAPI&logoColor=white"/>
-<img src="https://img.shields.io/badge/DuckDB-FFF000?style=flat&logo=DuckDB&logoColor=white"/>
+**BOJ PS problem Recsys Server bulit with** <img src="https://img.shields.io/badge/Python-3776AB?style=flat&logo=Python&logoColor=white"/> <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=flat&logo=PyTorch&logoColor=white"/> <img src="https://img.shields.io/badge/FastAPI-009688?style=flat&logo=FastAPI&logoColor=white"/> <img src="https://img.shields.io/badge/DuckDB-FFF000?style=flat&logo=DuckDB&logoColor=white"/>
 
 ## Introduction
 This GitHub repository contains the source code for BOJ problem recommendation system server, which provides APIs that the [baekjoon Bot](https://github.com/boaz-baekjoon/baekjoon-discord-bot) server can request in various user needs situations. The recommendation was implemented through a sequential recommendation model and a hybrid graph model combining Collaborative Filtering (CF) and Knowledge Graph (KG). These AI models were built with Pytorch and served with FastAPI. In addition, appropriate transformation was performed on the [pre-loaded PostgreSQL](https://github.com/boaz-baekjoon/baekjoon-celery-scraper-airflow) data and a data mart for the model server was built using duckdb.
@@ -55,3 +50,23 @@ uvicorn server:app --host 0.0.0.0 --port {PORTNUM} --reload
 |baekjun/group_rec |POST|SASRec|Recommend problems of the tier and problem type selected by group users.|{<br>”user_id_list” : List[str],<br>”tier” : int,<br>”category_num” : List[int]<br>}| {<br>”0” : List[int],<br>”1” : List[int],<br>…,<br>”9” List[int]<br>}|
 |baekjun/similar_id |POST|KGAT|Recommend problems similar to the problem submitted by the user.|{<br>”problem_id” : int,<br>”problem_num” : int<br>}|{<br>”problem_id” : List[int]<br>}|
 
+## References
+
+```
+@inproceedings{kang2018self,
+  title={Self-attentive sequential recommendation},
+  author={Kang, Wang-Cheng and McAuley, Julian},
+  booktitle={2018 IEEE international conference on data mining (ICDM)},
+  pages={197--206},
+  year={2018},
+  organization={IEEE}
+}
+
+@inproceedings{wang2019kgat,
+  title={Kgat: Knowledge graph attention network for recommendation},
+  author={Wang, Xiang and He, Xiangnan and Cao, Yixin and Liu, Meng and Chua, Tat-Seng},
+  booktitle={Proceedings of the 25th ACM SIGKDD international conference on knowledge discovery \& data mining},
+  pages={950--958},
+  year={2019}
+}
+```
